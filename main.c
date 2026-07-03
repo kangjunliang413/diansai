@@ -53,7 +53,6 @@ int main(void)
     // 使能GPIOA中断（按键KEY1和左电机编码器AA共享此中断）
     NVIC_EnableIRQ(DC_MOTOR_INT_IRQN);  // 等价于 GPIOA_INT_IRQn
     NVIC_EnableIRQ(KEY_INT_IRQN);
-    DL_ADC12_enableConversions(xuanniu_INST);
     DL_Timer_setCaptureCompareValue(SERVO_INST, 50, GPIO_SERVO_C1_IDX);
     DL_Timer_startCounter(SERVO_INST);
 
@@ -67,8 +66,8 @@ int main(void)
 
     // ===== 设置双轮目标速度 =====
     // 目标速度单位：mm/s
-    Motor_Left.target_speed = 300.0f;   // 左轮目标速度 300mm/s
-    Motor_Right.target_speed = 300.0f;  // 右轮目标速度 300mm/s
+    Motor_Left.target_speed = 30.0f;   // 左轮目标速度 300mm/s
+    Motor_Right.target_speed = 30.0f;  // 右轮目标速度 300mm/s
     
     // ========== 主循环：根据模式执行不同的控制逻辑 ==========
     while (1) {

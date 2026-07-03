@@ -150,15 +150,35 @@ void motor_set_direction(uint8_t motor_id, uint8_t direction)
 void calculate_speed(uint8_t motor_id)
 {
     if (motor_id == 1) {
-        // 左轮速度计算（GPIO中断方式）
+        // 左轮速度计算（中断方式）
         // 速度(mm/s) = 脉冲增量 / 编码器每转脉冲数 / 采样时间(s) × 车轮周长(mm)
-        Motor_Left.current_speed = (float)encoder_counter_left * WHEEL_CIRCUMFERENCE_MM / ENCODER_PPR / PID_SAMPLE_TIME_S;
+        Motor_Left.current_speed = -(float)encoder_counter_left * WHEEL_CIRCUMFERENCE_MM / ENCODER_PPR / PID_SAMPLE_TIME_S;//左轮由于对称原因计算出来的速度是负的，加一个负号
 
         // 清零编码器计数器（为下一次采样做准备）
         encoder_counter_left = 0;
 
     } else if (motor_id == 2) {
-        // 右轮速度计算（GPIO中断方式）
+        // 右轮速度计算（轮询方式 - 临时方案）
+        // TODO: 需要在 SysConfig 中配置 DC_MOTOR_RIGHT_BA 为 GPIO 中断
+
+        // 轮询读取右轮编码器BA引脚状态
+        static uint8_t last_state_right_ba = 0;
+        uint32_t current_state_ba = DL_GPIO_readPins(DC_MOTOR_RIGHT_PORT, DC_MOTOR_RIGHT_BA_PIN);
+
+        // 检测上升沿
+        if (current_state_ba != 0 && last_state_right_ba == 0) {
+            // BA 上升沿，读取 BB 相判断方向
+            uint32_t pin_bb = DL_GPIO_readPins(DC_MOTOR_RIGHT_PORT, DC_MOTOR_RIGHT_BB_PIN);
+
+            if (pin_bb == 0) {
+                encoder_counter_right++;  // 正转
+            } else {
+                encoder_counter_right--;  // 反转
+            }
+        }
+        last_state_right_ba = (current_state_ba != 0) ? 1 : 0;
+
+        // 计算速度
         Motor_Right.current_speed = (float)encoder_counter_right * WHEEL_CIRCUMFERENCE_MM / ENCODER_PPR / PID_SAMPLE_TIME_S;
 
         // 清零编码器计数器
