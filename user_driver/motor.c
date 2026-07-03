@@ -269,7 +269,11 @@ void motor_pi_loop(uint8_t motor_id)
 // ===================== 定时器中断服务函数（PID控制周期：50ms）=====================
 
 /**
- * @brief PID定时器中断服务函数
+ * @brief PID定时器中断服务函数（TIMA0）
+ *
+ * 硬件映射：
+ * - MOTOR_PID_INST → PID_INST → TIMA0
+ * - 中断函数名必须为：TIMA0_IRQHandler（与启动文件向量表匹配）
  *
  * 触发周期：50ms（20Hz）
  *
@@ -278,8 +282,11 @@ void motor_pi_loop(uint8_t motor_id)
  * 2. 计算实际物理速度
  * 3. 执行PI算法计算PWM
  * 4. 更新电机PWM输出
+ *
+ * 中断标志位清除：
+ * DL_Timer_getPendingInterrupt() 会自动读取并清除中断标志位（IIDX寄存器）
  */
-void MOTOR_PID_INST_IRQHandler(void)
+void TIMA0_IRQHandler(void)
 {
     switch (DL_Timer_getPendingInterrupt(MOTOR_PID_INST))
     {
