@@ -7,17 +7,23 @@
 // ===================== 灰度传感器配置说明 =====================
 /*
  * 硬件连接：
- * - 8路数字灰度传感器，从左到右依次为：传感器0 ~ 传感器7
+ * - 8路数字灰度传感器，从左到右依次为：L4, L3, L2, L1, R1, R2, R3, R4
  * - 传感器输出特性：黑线=0（低电平），白底=1（高电平）
  * - 代码中已做按位取反处理，使得黑线=1，白底=0
  *
- * 引脚宏定义（需根据 SysConfig 实际生成的名称替换）：
- * - HUIDU_PORT：灰度传感器所在的 GPIO 端口（如 GPIOA、GPIOB 等）
- * - HUIDU_PIN_0 ~ HUIDU_PIN_7：8个传感器对应的引脚宏（如 DL_GPIO_PIN_0 等）
+ * 引脚定义（已在 ti_msp_dl_config.h 中生成）：
+ * - HUI_DU_L4_PORT / HUI_DU_L4_PIN：最左边传感器（Bit 0）
+ * - HUI_DU_L3_PORT / HUI_DU_L3_PIN：传感器L3（Bit 1）
+ * - HUI_DU_L2_PORT / HUI_DU_L2_PIN：传感器L2（Bit 2）
+ * - HUI_DU_L1_PORT / HUI_DU_L1_PIN：传感器L1（Bit 3）
+ * - HUI_DU_R1_PORT / HUI_DU_R1_PIN：传感器R1（Bit 4）
+ * - HUI_DU_R2_PORT / HUI_DU_R2_PIN：传感器R2（Bit 5）
+ * - HUI_DU_R3_PORT / HUI_DU_R3_PIN：传感器R3（Bit 6）
+ * - HUI_DU_R4_PORT / HUI_DU_R4_PIN：最右边传感器（Bit 7）
  *
  * 位序定义：
- * - Bit 0（最低位）：最左边的传感器（传感器0）
- * - Bit 7（最高位）：最右边的传感器（传感器7）
+ * - Bit 0（最低位）：最左边的传感器（L4）
+ * - Bit 7（最高位）：最右边的传感器（R4）
  */
 
 // ===================== 函数声明 =====================

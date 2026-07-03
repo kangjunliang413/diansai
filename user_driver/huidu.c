@@ -10,6 +10,9 @@ static float last_valid_error = 0.0f;
 /**
  * @brief 读取8路灰度传感器的原始状态
  *
+ * 传感器物理布局（从左到右）：
+ * L4, L3, L2, L1, R1, R2, R3, R4
+ *
  * 读取步骤：
  * 1. 使用 DL_GPIO_readPins() 读取每个传感器的引脚状态
  * 2. 将读到的电平按位取反（黑线=0 → 1，白底=1 → 0）
@@ -21,47 +24,43 @@ uint8_t Huidu_Read_Raw(void)
 {
     uint8_t sensor_data = 0;
 
-    // ⚠️ 注意：以下引脚宏需要根据 SysConfig 实际生成的名称替换
-    // 示例：如果 SysConfig 中命名为 GRAY_SENSOR_PORT 和 GRAY_SENSOR_PIN_0，
-    // 则将 HUIDU_PORT 替换为 GRAY_SENSOR_PORT，HUIDU_PIN_0 替换为 GRAY_SENSOR_PIN_0
-
-    // 读取传感器0（最左边）- Bit 0
-    if (DL_GPIO_readPins(HUIDU_PORT, HUIDU_PIN_0) == 0) {
+    // 读取传感器 L4（最左边）- Bit 0
+    if (DL_GPIO_readPins(HUI_DU_L4_PORT, HUI_DU_L4_PIN) == 0) {
         sensor_data |= (1 << 0);  // 黑线（低电平） → 置1
     }
 
-    // 读取传感器1 - Bit 1
-    if (DL_GPIO_readPins(HUIDU_PORT, HUIDU_PIN_1) == 0) {
+    // 读取传感器 L3 - Bit 1
+    if (DL_GPIO_readPins(HUI_DU_L3_PORT, HUI_DU_L3_PIN) == 0) {
         sensor_data |= (1 << 1);
     }
 
-    // 读取传感器2 - Bit 2
-    if (DL_GPIO_readPins(HUIDU_PORT, HUIDU_PIN_2) == 0) {
+    // 读取传感器 L2 - Bit 2
+    if (DL_GPIO_readPins(HUI_DU_L2_PORT, HUI_DU_L2_PIN) == 0) {
         sensor_data |= (1 << 2);
     }
 
-    // 读取传感器3 - Bit 3
-    if (DL_GPIO_readPins(HUIDU_PORT, HUIDU_PIN_3) == 0) {
+    // 读取传感器 L1 - Bit 3
+    if (DL_GPIO_readPins(HUI_DU_L1_PORT, HUI_DU_L1_PIN) == 0) {
         sensor_data |= (1 << 3);
     }
 
-    // 读取传感器4 - Bit 4
-    if (DL_GPIO_readPins(HUIDU_PORT, HUIDU_PIN_4) == 0) {
+    // 读取传感器 R1 - Bit 4
+    if (DL_GPIO_readPins(HUI_DU_R1_PORT, HUI_DU_R1_PIN) == 0) {
         sensor_data |= (1 << 4);
     }
 
-    // 读取传感器5 - Bit 5
-    if (DL_GPIO_readPins(HUIDU_PORT, HUIDU_PIN_5) == 0) {
+    // 读取传感器 R2 - Bit 5
+    if (DL_GPIO_readPins(HUI_DU_R2_PORT, HUI_DU_R2_PIN) == 0) {
         sensor_data |= (1 << 5);
     }
 
-    // 读取传感器6 - Bit 6
-    if (DL_GPIO_readPins(HUIDU_PORT, HUIDU_PIN_6) == 0) {
+    // 读取传感器 R3 - Bit 6
+    if (DL_GPIO_readPins(HUI_DU_R3_PORT, HUI_DU_R3_PIN) == 0) {
         sensor_data |= (1 << 6);
     }
 
-    // 读取传感器7（最右边）- Bit 7
-    if (DL_GPIO_readPins(HUIDU_PORT, HUIDU_PIN_7) == 0) {
+    // 读取传感器 R4（最右边）- Bit 7
+    if (DL_GPIO_readPins(HUI_DU_R4_PORT, HUI_DU_R4_PIN) == 0) {
         sensor_data |= (1 << 7);
     }
 

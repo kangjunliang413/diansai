@@ -48,7 +48,6 @@ uint8_t Key_Scan_Multi_Click(void)
         if(read_key_with_debounce() == 1) {
             // 检测到第一次按键
             click_count = 1;
-            DL_GPIO_togglePins(LED_PORT, LED_LED0_PIN);  // 翻转 LED
             wait_key_release();  // 等待释放
             timeout_counter = 0;
             key_state_machine = 1;  // 进入2秒窗口检测状态
@@ -63,7 +62,6 @@ uint8_t Key_Scan_Multi_Click(void)
             if(click_count > 4) {
                 click_count = 1;  // 循环溢出
             }
-            DL_GPIO_togglePins(LED_PORT, LED_LED0_PIN);  // 翻转 LED
             wait_key_release();  // 等待释放
             timeout_counter = 0;  // 刷新超时倒计时
         }
