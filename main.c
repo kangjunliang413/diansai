@@ -39,7 +39,7 @@
 #include "motor.h"
 
 int status = 0;
-int run_mode = 0;  // 运行模式：0=停止, 1=直行, 2=直行+左转, 3=直行+右转, 4=保留
+int run_mode = 2;  // 运行模式：0=停止, 1=直行, 2=右轮PID调试, 3=直行+右转, 4=保留
 
 int main(void)
 {
@@ -64,12 +64,11 @@ int main(void)
     DL_Timer_startCounter(MOTOR_PID_INST);
     NVIC_EnableIRQ(MOTOR_PID_INST_INT_IRQN);
 
-    // ===== 设置双轮目标速度 =====
-    // 目标速度单位：mm/s
-    Motor_Left.target_speed = 30.0f;   // 左轮目标速度 300mm/s
-    Motor_Right.target_speed = 30.0f;  // 右轮目标速度 300mm/s
-    
-    // ========== 主循环：根据模式执行不同的控制逻辑 ==========
+                Motor_Right.integral = 0.0f;
+                Motor_Right.error = 0.0f;
+                Motor_Right.pwm_output = 0;
+    while (1) {
+        // ========== 主循环：根据模式执行不同的控制逻辑 ==========
         switch(run_mode) {
             case 1:  // 模式1：直行测试
                 motor_set_direction(1, 1);
@@ -81,20 +80,44 @@ int main(void)
                 delay_ms(1000);
                 break;
 
-            case 2:  // 模式2：直行 + 左转
-                // 直行
-                motor_set_direction(1, 1);
-                motor_set_direction(2, 1);
-                delay_ms(2000);
-                // 左转（左轮停，右轮前进）
+            case 2:  // 模式2：右轮PID调试
+            {
+                char oled_str[24];
+                int32_t target_speed;
+                int32_t current_speed;
+                int32_t encoder_count;
+                uint8_t i;
+
+
+                Motor_Left.target_speed = 0.0f;
+                Motor_Right.target_speed = 300.0f;
                 motor_set_direction(1, 0);
                 motor_set_direction(2, 1);
-                delay_ms(1000);
-                // 停止
-                motor_set_direction(1, 0);
-                motor_set_direction(2, 0);
-                delay_ms(1000);
+
+                OLED_Clear();
+                for (i = 0; i < 20; i++) {
+                    __disable_irq();
+                    target_speed = (int32_t)Motor_Right.target_speed;
+                    current_speed = (int32_t)Motor_Right.current_speed;
+                    encoder_count = encoder_counter_right;
+                    __enable_irq();
+
+                    OLED_ShowString(0, 0, (u8 *)"Mode2 R Wheel   ", 16);
+
+                    sprintf(oled_str, "Tgt:%4ld mm/s  ", (long)target_speed);
+                    OLED_ShowString(0, 16, (u8 *)oled_str, 16);
+
+                    sprintf(oled_str, "Act:%4ld mm/s  ", (long)current_speed);
+                    OLED_ShowString(0, 32, (u8 *)oled_str, 16);
+
+                    sprintf(oled_str, "Enc:%8ld    ", (long)encoder_count);
+                    OLED_ShowString(0, 48, (u8 *)oled_str, 16);
+
+                    OLED_Refresh();
+                    delay_ms(100);
+                }
                 break;
+            }
 
             case 3:  // 模式3：直行 + 右转
                 // 直行
@@ -124,6 +147,7 @@ int main(void)
                 delay_ms(1000);
                 break;
         }
+    }
         
         
         
