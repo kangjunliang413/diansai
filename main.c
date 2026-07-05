@@ -178,4 +178,3 @@ int main(void)
         // DL_GPIO_setPins(LED_PORT, LED_LED1_PIN);
         // UART_send_string(PRINT_INST, "hello, ti!\n");
     }
-}

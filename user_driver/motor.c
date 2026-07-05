@@ -32,11 +32,7 @@ Motor_PI_TypeDef Motor_Right = {
 volatile int32_t encoder_counter_left = 0;
 volatile int32_t encoder_counter_right = 0;
 
-// 编码器上一次状态（用于判断方向）
-static uint8_t last_state_left_A = 0;
-static uint8_t last_state_left_B = 0;
-static uint8_t last_state_right_A = 0;
-static uint8_t last_state_right_B = 0;
+
 
 // ===================== 函数实现 =====================
 
