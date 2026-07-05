@@ -39,7 +39,7 @@
 #include "motor.h"
 
 int status = 0;
-int run_mode = 2;  // 运行模式：0=停止, 1=直行, 2=右轮PID调试, 3=直行+右转, 4=保留
+int run_mode = 2;  // 运行模式：0=停止, 1=直行, 2=直行测试, 3=直行+右转, 4=保留
 
 int main(void)
 {
@@ -64,9 +64,12 @@ int main(void)
     DL_Timer_startCounter(MOTOR_PID_INST);
     NVIC_EnableIRQ(MOTOR_PID_INST_INT_IRQN);
 
-                Motor_Right.integral = 0.0f;
-                Motor_Right.error = 0.0f;
-                Motor_Right.pwm_output = 0;
+    Motor_Left.integral = 0.0f;
+    Motor_Left.error = 0.0f;
+    Motor_Left.pwm_output = 0;
+    Motor_Right.integral = 0.0f;
+    Motor_Right.error = 0.0f;
+    Motor_Right.pwm_output = 0;
     while (1) {
         // ========== 主循环：根据模式执行不同的控制逻辑 ==========
         switch(run_mode) {
@@ -80,37 +83,39 @@ int main(void)
                 delay_ms(1000);
                 break;
 
-            case 2:  // 模式2：右轮PID调试
+            case 2:  // 模式2：直行测试
             {
                 char oled_str[24];
-                int32_t target_speed;
-                int32_t current_speed;
-                int32_t encoder_count;
+                int32_t left_speed;
+                int32_t right_speed;
+                int32_t left_encoder;
+                int32_t right_encoder;
                 uint8_t i;
 
 
-                Motor_Left.target_speed = 0.0f;
-                Motor_Right.target_speed = 300.0f;
-                motor_set_direction(1, 0);
+                Motor_Left.target_speed = 199.9f;
+                Motor_Right.target_speed = 200.0f;
+                motor_set_direction(1, 1);
                 motor_set_direction(2, 1);
 
                 OLED_Clear();
                 for (i = 0; i < 20; i++) {
                     __disable_irq();
-                    target_speed = (int32_t)Motor_Right.target_speed;
-                    current_speed = (int32_t)Motor_Right.current_speed;
-                    encoder_count = encoder_counter_right;
+                    left_speed = (int32_t)Motor_Left.current_speed;
+                    right_speed = (int32_t)Motor_Right.current_speed;
+                    left_encoder = encoder_counter_left;
+                    right_encoder = encoder_counter_right;
                     __enable_irq();
 
-                    OLED_ShowString(0, 0, (u8 *)"Mode2 R Wheel   ", 16);
+                    OLED_ShowString(0, 0, (u8 *)"Straight 200    ", 16);
 
-                    sprintf(oled_str, "Tgt:%4ld mm/s  ", (long)target_speed);
+                    sprintf(oled_str, "LAct:%4ld      ", (long)left_speed);
                     OLED_ShowString(0, 16, (u8 *)oled_str, 16);
 
-                    sprintf(oled_str, "Act:%4ld mm/s  ", (long)current_speed);
+                    sprintf(oled_str, "RAct:%4ld      ", (long)right_speed);
                     OLED_ShowString(0, 32, (u8 *)oled_str, 16);
 
-                    sprintf(oled_str, "Enc:%8ld    ", (long)encoder_count);
+                    sprintf(oled_str, "L:%4ld R:%4ld ", (long)left_encoder, (long)right_encoder);
                     OLED_ShowString(0, 48, (u8 *)oled_str, 16);
 
                     OLED_Refresh();
