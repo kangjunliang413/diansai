@@ -8,7 +8,8 @@
                 "D:/ti/ccs2100/ccs/tools/compiler/ti-cgt-armllvm_5.1.1.LTS/include",
                 "${workspaceFolder}",
                 "${workspaceFolder}/Debug",
-                "${workspaceFolder}/user_driver"
+                "${workspaceFolder}/user_driver",
+                "${workspaceFolder}/Hardware_JY901S"
 
             ],
             "defines": [

@@ -37,9 +37,10 @@
 #include "uart.h"
 #include "key.h"
 #include "motor.h"
+#include "huidu.h"
 
 int status = 0;
-int run_mode = 2;  // 运行模式：0=停止, 1=直行, 2=直行测试, 3=直行+右转, 4=保留
+int run_mode = 2;  // 运行模式：0=停止, 1=直行, 2=循迹PID测试, 3=直行+右转, 4=保留
 
 int main(void)
 {
@@ -83,43 +84,51 @@ int main(void)
                 delay_ms(1000);
                 break;
 
-            case 2:  // 模式2：直行测试
+            case 2:  // 模式2：循迹PID测试
             {
                 char oled_str[24];
-                int32_t left_speed;
-                int32_t right_speed;
-                int32_t left_encoder;
-                int32_t right_encoder;
+                int32_t left_target;
+                int32_t right_target;
+                int32_t position_x10;
+                int32_t error_x10;
+                int32_t control_output;
+                uint8_t sensor_raw;
                 uint8_t i;
 
-
-                Motor_Left.target_speed = 199.9f;
-                Motor_Right.target_speed = 200.0f;
                 motor_set_direction(1, 1);
                 motor_set_direction(2, 1);
 
                 OLED_Clear();
-                for (i = 0; i < 20; i++) {
+                for (i = 0; i < 10; i++) {
+                    Huidu_LineFollow_Task();
+
                     __disable_irq();
-                    left_speed = (int32_t)Motor_Left.current_speed;
-                    right_speed = (int32_t)Motor_Right.current_speed;
-                    left_encoder = encoder_counter_left;
-                    right_encoder = encoder_counter_right;
+                    left_target = (int32_t)Motor_Left.target_speed;
+                    right_target = (int32_t)Motor_Right.target_speed;
                     __enable_irq();
 
-                    OLED_ShowString(0, 0, (u8 *)"Straight 200    ", 16);
+                    sensor_raw = Huidu_Read_Raw();
+                    position_x10 = (int32_t)(Huidu_Get_Position() * 10.0f);
+                    error_x10 = (int32_t)(Huidu_Get_Last_Error() * 10.0f);
+                    control_output = (int32_t)Huidu_Get_Control_Output();
 
-                    sprintf(oled_str, "LAct:%4ld      ", (long)left_speed);
+                    if (sensor_raw == 0x00U) {
+                        OLED_ShowString(0, 0, (u8 *)"LOST STOP       ", 16);
+                    } else {
+                        OLED_ShowString(0, 0, (u8 *)"Line PID 200    ", 16);
+                    }
+
+                    sprintf(oled_str, "Raw:%02X Pos:%3ld", (unsigned int)sensor_raw, (long)position_x10);
                     OLED_ShowString(0, 16, (u8 *)oled_str, 16);
 
-                    sprintf(oled_str, "RAct:%4ld      ", (long)right_speed);
+                    sprintf(oled_str, "Err:%4ld C:%4ld", (long)error_x10, (long)control_output);
                     OLED_ShowString(0, 32, (u8 *)oled_str, 16);
 
-                    sprintf(oled_str, "L:%4ld R:%4ld ", (long)left_encoder, (long)right_encoder);
+                    sprintf(oled_str, "L:%4ld R:%4ld ", (long)left_target, (long)right_target);
                     OLED_ShowString(0, 48, (u8 *)oled_str, 16);
 
                     OLED_Refresh();
-                    delay_ms(100);
+                    delay_ms(50);
                 }
                 break;
             }

@@ -225,6 +225,15 @@ void motor_pi_loop(uint8_t motor_id)
 
     if (motor_id == 1) {
         // 左轮PI控制
+        if (Motor_Left.target_speed == 0.0f) {
+            Motor_Left.error = 0.0f;
+            Motor_Left.integral = 0.0f;
+            Motor_Left.pwm_output = 0;
+            motor_set_direction(1, 0);
+            motor_set_duty(1, 0);
+            return;
+        }
+
         pwm_output = motor_pi_control(&Motor_Left);
 
         // 根据PWM输出的正负确定方向和占空比
@@ -244,6 +253,15 @@ void motor_pi_loop(uint8_t motor_id)
 
     } else if (motor_id == 2) {
         // 右轮PI控制
+        if (Motor_Right.target_speed == 0.0f) {
+            Motor_Right.error = 0.0f;
+            Motor_Right.integral = 0.0f;
+            Motor_Right.pwm_output = 0;
+            motor_set_direction(2, 0);
+            motor_set_duty(2, 0);
+            return;
+        }
+
         pwm_output = motor_pi_control(&Motor_Right);
 
         // 根据PWM输出的正负确定方向和占空比
