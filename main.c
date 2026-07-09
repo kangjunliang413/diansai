@@ -38,18 +38,67 @@
 #include "key.h"
 #include "motor.h"
 #include "huidu.h"
+#include "wit_c_sdk.h"
 
 int status = 0;
 int run_mode = 2;  // 运行模式：0=停止, 1=直行, 2=循迹PID测试, 3=直行+右转, 4=保留
 
+static void JY901S_RegUpdate(uint32_t uiReg, uint32_t uiRegNum)
+{
+    (void)uiReg;
+    (void)uiRegNum;
+}
+
+static void JY901S_SerialWrite(uint8_t *p_ucData, uint32_t uiLen)
+{
+    uint32_t i;
+
+    for (i = 0; i < uiLen; i++) {
+        UART_send_char(PRINT_INST, p_ucData[i]);
+    }
+}
+
+static void JY901S_DelayMs(uint16_t ms)
+{
+    delay_ms(ms);
+}
+
+static int32_t JY901S_AngleRawToTenths(int16_t raw)
+{
+    return ((int32_t)raw * 1800L) / 32768L;
+}
+
+static void JY901S_FormatAngle(char *str, char axis, int16_t raw)
+{
+    int32_t angle_x10 = JY901S_AngleRawToTenths(raw);
+    char sign = ' ';
+
+    if (angle_x10 < 0) {
+        sign = '-';
+        angle_x10 = -angle_x10;
+    }
+
+    sprintf(str, "%c:%c%3ld.%1ld deg ", axis, sign,
+            (long)(angle_x10 / 10L), (long)(angle_x10 % 10L));
+}
+
 int main(void)
 {
     SYSCFG_DL_init();
+    WitInit(WIT_PROTOCOL_NORMAL, 0x50);
+    WitRegisterCallBack(JY901S_RegUpdate);
+    WitSerialWriteRegister(JY901S_SerialWrite);
+    WitDelayMsRegister(JY901S_DelayMs);
+
     OLED_Init();
     OLED_ColorTurn(0);//0正常显示，1 反色显示
     OLED_DisplayTurn(0);//0正常显示 1 屏幕翻转显示
     OLED_Clear();
-    // NVIC_EnableIRQ(PRINT_INST_INT_IRQN);
+    UART_set_jy901s_baud_rate(9600U);
+    NVIC_EnableIRQ(PRINT_INST_INT_IRQN);
+    WitSetContent(RSW_ACC | RSW_GYRO | RSW_ANGLE);
+    delay_ms(50);
+    WitSetOutputRate(RRATE_10HZ);
 
     // 使能GPIOA中断（按键KEY1和左电机编码器AA共享此中断）
     NVIC_EnableIRQ(DC_MOTOR_INT_IRQN);  // 等价于 GPIOA_INT_IRQn
@@ -87,44 +136,37 @@ int main(void)
             case 2:  // 模式2：循迹PID测试
             {
                 char oled_str[24];
-                int32_t left_target;
-                int32_t right_target;
-                int32_t position_x10;
-                int32_t error_x10;
-                int32_t control_output;
-                uint8_t sensor_raw;
+                int16_t roll_raw;
+                int16_t pitch_raw;
+                int16_t yaw_raw;
                 uint8_t i;
 
-                motor_set_direction(1, 1);
-                motor_set_direction(2, 1);
+                motor_set_direction(1, 0);
+                motor_set_direction(2, 0);
+                __disable_irq();
+                Motor_Left.target_speed = 0.0f;
+                Motor_Right.target_speed = 0.0f;
+                Motor_Left.integral = 0.0f;
+                Motor_Right.integral = 0.0f;
+                __enable_irq();
 
                 OLED_Clear();
                 for (i = 0; i < 10; i++) {
-                    Huidu_LineFollow_Task();
-
                     __disable_irq();
-                    left_target = (int32_t)Motor_Left.target_speed;
-                    right_target = (int32_t)Motor_Right.target_speed;
+                    roll_raw = sReg[Roll];
+                    pitch_raw = sReg[Pitch];
+                    yaw_raw = sReg[Yaw];
                     __enable_irq();
 
-                    sensor_raw = Huidu_Read_Raw();
-                    position_x10 = (int32_t)(Huidu_Get_Position() * 10.0f);
-                    error_x10 = (int32_t)(Huidu_Get_Last_Error() * 10.0f);
-                    control_output = (int32_t)Huidu_Get_Control_Output();
+                    OLED_ShowString(0, 0, (u8 *)"JY901S 9600     ", 16);
 
-                    if (sensor_raw == 0x00U) {
-                        OLED_ShowString(0, 0, (u8 *)"LOST STOP       ", 16);
-                    } else {
-                        OLED_ShowString(0, 0, (u8 *)"Line PID 200    ", 16);
-                    }
-
-                    sprintf(oled_str, "Raw:%02X Pos:%3ld", (unsigned int)sensor_raw, (long)position_x10);
+                    JY901S_FormatAngle(oled_str, 'R', roll_raw);
                     OLED_ShowString(0, 16, (u8 *)oled_str, 16);
 
-                    sprintf(oled_str, "Err:%4ld C:%4ld", (long)error_x10, (long)control_output);
+                    JY901S_FormatAngle(oled_str, 'P', pitch_raw);
                     OLED_ShowString(0, 32, (u8 *)oled_str, 16);
 
-                    sprintf(oled_str, "L:%4ld R:%4ld ", (long)left_target, (long)right_target);
+                    JY901S_FormatAngle(oled_str, 'Y', yaw_raw);
                     OLED_ShowString(0, 48, (u8 *)oled_str, 16);
 
                     OLED_Refresh();
