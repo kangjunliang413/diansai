@@ -197,7 +197,6 @@ TIMER1.interrupts         = ["LOAD"];
 TIMER1.timerStartTimer    = true;
 TIMER1.peripheral.$assign = "TIMA0";
 
-UART1.targetBaudRate                   = 115200;
 UART1.enabledInterrupts                = ["RX"];
 UART1.$name                            = "PRINT";
 UART1.peripheral.rxPin.$assign         = "PA31";
