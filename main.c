@@ -43,7 +43,7 @@
 int status = 0;
 int run_mode = 2;  // 运行模式：0=停止, 1=直行, 2=循迹PID测试, 3=直行+右转, 4=保留
 
-static void FormatAngleX10(char *str, char axis, int32_t angle_x10)
+static void FormatAngleX10(char *str, const char *label, int32_t angle_x10)
 {
     char sign = ' ';
 
@@ -52,7 +52,7 @@ static void FormatAngleX10(char *str, char axis, int32_t angle_x10)
         angle_x10 = -angle_x10;
     }
 
-    sprintf(str, "%c:%c%3ld.%1ld deg ", axis, sign,
+    sprintf(str, "%s:%c%3ld.%1ld deg", label, sign,
             (long)(angle_x10 / 10L), (long)(angle_x10 % 10L));
 }
 
@@ -66,6 +66,17 @@ int main(void)
     OLED_DisplayTurn(0);//0正常显示 1 屏幕翻转显示
     OLED_Clear();
     NVIC_EnableIRQ(PRINT_INST_INT_IRQN);
+    OLED_ShowString(0, 0, (u8 *)"JY901S calibrate", 16);
+    OLED_ShowString(0, 16, (u8 *)"Keep car still ", 16);
+    OLED_Refresh();
+    if (JY901S_CalibrateGyroZ(40U, 3000U) == 0U) {
+        OLED_Clear();
+        OLED_ShowString(0, 0, (u8 *)"GZ cal timeout ", 16);
+        OLED_ShowString(0, 16, (u8 *)"Check UART data ", 16);
+        OLED_Refresh();
+        delay_ms(1000);
+    }
+    JY901S_ResetGyroZTurnAngle();
 
     // 使能GPIOA中断（按键KEY1和左电机编码器AA共享此中断）
     NVIC_EnableIRQ(DC_MOTOR_INT_IRQN);  // 等价于 GPIOA_INT_IRQn
@@ -104,6 +115,7 @@ int main(void)
             {
                 char oled_str[24];
                 JY901S_Angle_t angle;
+                int32_t gz_turn_angle_x10;
                 uint8_t i;
 
                 motor_set_direction(1, 0);
@@ -117,19 +129,21 @@ int main(void)
 
                 OLED_Clear();
                 for (i = 0; i < 10; i++) {
-                    __disable_irq();
                     JY901S_GetAngle(&angle);
-                    __enable_irq();
+                    gz_turn_angle_x10 = JY901S_GetGyroZTurnAngleX10();
 
-                    OLED_ShowString(0, 0, (u8 *)"JY901S 9600     ", 16);
+                    OLED_ShowString(0, 0, (u8 *)"JY901S Z yaw    ", 16);
 
-                    FormatAngleX10(oled_str, 'R', angle.roll_x10);
+                    FormatAngleX10(oled_str, "ZA", angle.yaw_x10);
                     OLED_ShowString(0, 16, (u8 *)oled_str, 16);
 
-                    FormatAngleX10(oled_str, 'P', angle.pitch_x10);
+                    FormatAngleX10(oled_str, "ZR", gz_turn_angle_x10);
                     OLED_ShowString(0, 32, (u8 *)oled_str, 16);
 
-                    FormatAngleX10(oled_str, 'Y', angle.yaw_x10);
+                    sprintf(oled_str, "F:%02X N%04lu A%04lu",
+                            JY901S_GetLastFrameType(),
+                            (unsigned long)(JY901S_GetGyroFrameCount() % 10000UL),
+                            (unsigned long)(JY901S_GetAngleFrameCount() % 10000UL));
                     OLED_ShowString(0, 48, (u8 *)oled_str, 16);
 
                     OLED_Refresh();
