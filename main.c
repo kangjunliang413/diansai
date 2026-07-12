@@ -165,6 +165,10 @@ int main(void)
                 motor_turn_angle_with_update(90, ShowJY901SZYaw);
                 delay_ms(2000);
                 motor_turn_angle_with_update(-90, ShowJY901SZYaw);
+                                delay_ms(2000);
+                motor_turn_angle_with_update(60, ShowJY901SZYaw);
+                delay_ms(2000);
+                motor_turn_angle_with_update(-60, ShowJY901SZYaw);
                 break;
 
             case 4:  // 模式4：暂待使用，保持静止

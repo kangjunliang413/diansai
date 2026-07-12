@@ -3,10 +3,12 @@
 #include "jy901s.h"
 #include <math.h>
 
-#define MOTOR_TURN_SPEED_MM_S       40.0f
-#define MOTOR_TURN_STOP_MARGIN_X10  30L
-#define MOTOR_TURN_TIMEOUT_MS       3000U
-#define MOTOR_TURN_LOOP_MS          10U
+#define MOTOR_TURN_SPEED_MM_S        40.0f
+#define MOTOR_TURN_SLOW_SPEED_MM_S   15.0f
+#define MOTOR_TURN_SLOW_WINDOW_X10   100L /* Distance to target at which to slow down: 10.0 deg */
+#define MOTOR_TURN_STOP_MARGIN_X10   15L  /* Low-speed stop lead: 1.0 deg */
+#define MOTOR_TURN_TIMEOUT_MS        3000U
+#define MOTOR_TURN_LOOP_MS           10U
 
 // ===================== 全局变量定义 =====================
 
@@ -317,6 +319,7 @@ void motor_pi_loop(uint8_t motor_id)
 void motor_turn_angle_with_update(int16_t angle_deg, Motor_TurnUpdateCallback update_callback)
 {
     uint16_t elapsed_ms = 0U;
+    uint8_t slow_speed_applied = 0U;
     int32_t target_x10;
     int32_t stop_x10;
 
@@ -363,9 +366,27 @@ void motor_turn_angle_with_update(int16_t angle_deg, Motor_TurnUpdateCallback up
 
     while (elapsed_ms < MOTOR_TURN_TIMEOUT_MS) {
         int32_t angle_x10 = JY901S_GetGyroZTurnAngleX10();
+        int32_t turned_x10 = (angle_deg > 0) ? angle_x10 : -angle_x10;
 
-        if (((angle_deg > 0) && (angle_x10 >= stop_x10)) ||
-            ((angle_deg < 0) && (angle_x10 <= -stop_x10))) {
+        /*
+         * Slow down before the target so that gyro sample latency and motor
+         * coast do not produce a target-angle-dependent overshoot.
+         */
+        if ((slow_speed_applied == 0U) &&
+            (turned_x10 >= (target_x10 - MOTOR_TURN_SLOW_WINDOW_X10))) {
+            __disable_irq();
+            if (angle_deg > 0) {
+                Motor_Left.target_speed = -MOTOR_TURN_SLOW_SPEED_MM_S;
+                Motor_Right.target_speed = MOTOR_TURN_SLOW_SPEED_MM_S;
+            } else {
+                Motor_Left.target_speed = MOTOR_TURN_SLOW_SPEED_MM_S;
+                Motor_Right.target_speed = -MOTOR_TURN_SLOW_SPEED_MM_S;
+            }
+            __enable_irq();
+            slow_speed_applied = 1U;
+        }
+
+        if (turned_x10 >= stop_x10) {
             break;
         }
 
