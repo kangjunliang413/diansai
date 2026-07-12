@@ -1,5 +1,12 @@
 #include "motor.h"
+#include "delay.h"
+#include "jy901s.h"
 #include <math.h>
+
+#define MOTOR_TURN_SPEED_MM_S       40.0f
+#define MOTOR_TURN_STOP_MARGIN_X10  30L
+#define MOTOR_TURN_TIMEOUT_MS       3000U
+#define MOTOR_TURN_LOOP_MS          10U
 
 // ===================== 全局变量定义 =====================
 
@@ -35,6 +42,25 @@ volatile int32_t encoder_counter_right = 0;
 
 
 // ===================== 函数实现 =====================
+
+static void motor_stop_all(void)
+{
+    __disable_irq();
+    Motor_Left.target_speed = 0.0f;
+    Motor_Right.target_speed = 0.0f;
+    Motor_Left.error = 0.0f;
+    Motor_Right.error = 0.0f;
+    Motor_Left.integral = 0.0f;
+    Motor_Right.integral = 0.0f;
+    Motor_Left.pwm_output = 0;
+    Motor_Right.pwm_output = 0;
+    __enable_irq();
+
+    motor_set_direction(1, 0);
+    motor_set_direction(2, 0);
+    motor_set_duty(1, 0);
+    motor_set_duty(2, 0);
+}
 
 /**
  * @brief 电机初始化
@@ -281,6 +307,87 @@ void motor_pi_loop(uint8_t motor_id)
     }
 }
 
+/**
+ * @brief 原地按角度转向
+ * @param angle_deg 目标角度，正数=左转，负数=右转，单位：度
+ *
+ * 使用JY901S的Z轴陀螺仪积分角度作为相对转向角。
+ * 已实测：小车左转时Z轴相对角度增加。
+ */
+void motor_turn_angle_with_update(int16_t angle_deg, Motor_TurnUpdateCallback update_callback)
+{
+    uint16_t elapsed_ms = 0U;
+    int32_t target_x10;
+    int32_t stop_x10;
+
+    if (angle_deg == 0) {
+        motor_stop_all();
+        return;
+    }
+
+    if (angle_deg > 0) {
+        target_x10 = (int32_t)angle_deg * 10L;
+    } else {
+        target_x10 = -(int32_t)angle_deg * 10L;
+    }
+
+    if (target_x10 > MOTOR_TURN_STOP_MARGIN_X10) {
+        stop_x10 = target_x10 - MOTOR_TURN_STOP_MARGIN_X10;
+    } else {
+        stop_x10 = target_x10;
+    }
+
+    motor_stop_all();
+    delay_ms(50);
+    JY901S_ResetGyroZTurnAngle();
+    if (update_callback != 0) {
+        update_callback();
+    }
+
+    __disable_irq();
+    Motor_Left.error = 0.0f;
+    Motor_Right.error = 0.0f;
+    Motor_Left.integral = 0.0f;
+    Motor_Right.integral = 0.0f;
+    Motor_Left.pwm_output = 0;
+    Motor_Right.pwm_output = 0;
+
+    if (angle_deg > 0) {
+        Motor_Left.target_speed = -MOTOR_TURN_SPEED_MM_S;
+        Motor_Right.target_speed = MOTOR_TURN_SPEED_MM_S;
+    } else {
+        Motor_Left.target_speed = MOTOR_TURN_SPEED_MM_S;
+        Motor_Right.target_speed = -MOTOR_TURN_SPEED_MM_S;
+    }
+    __enable_irq();
+
+    while (elapsed_ms < MOTOR_TURN_TIMEOUT_MS) {
+        int32_t angle_x10 = JY901S_GetGyroZTurnAngleX10();
+
+        if (((angle_deg > 0) && (angle_x10 >= stop_x10)) ||
+            ((angle_deg < 0) && (angle_x10 <= -stop_x10))) {
+            break;
+        }
+
+        if (update_callback != 0) {
+            update_callback();
+        }
+
+        delay_ms(MOTOR_TURN_LOOP_MS);
+        elapsed_ms += MOTOR_TURN_LOOP_MS;
+    }
+
+    motor_stop_all();
+    if (update_callback != 0) {
+        update_callback();
+    }
+}
+
+void motor_turn_angle(int16_t angle_deg)
+{
+    motor_turn_angle_with_update(angle_deg, 0);
+}
+
 // ===================== 定时器中断服务函数（PID控制周期：50ms）=====================
 
 /**
@@ -368,8 +475,8 @@ void GROUP1_IRQHandler(void)
     case KEY_KEY1_IIDX:
         // 按键中断：循环切换运行模式
         {
-            extern int run_mode;
-            run_mode = 2;  // 循环切换 0~4 五种模式 (run_mode + 1) % 5
+            extern volatile int run_mode;
+            run_mode = 3;  // 循环切换 0~4 五种模式 (run_mode + 1) % 5
         }
         break;
 

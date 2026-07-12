@@ -41,7 +41,7 @@
 #include "jy901s.h"
 
 int status = 0;
-int run_mode = 2;  // 运行模式：0=停止, 1=直行, 2=循迹PID测试, 3=直行+右转, 4=保留
+volatile int run_mode = 2;  // 运行模式：0=停止, 1=直行, 2=JY901S测试, 3=原地转向测试, 4=保留
 
 static void FormatAngleX10(char *str, const char *label, int32_t angle_x10)
 {
@@ -54,6 +54,32 @@ static void FormatAngleX10(char *str, const char *label, int32_t angle_x10)
 
     sprintf(str, "%s:%c%3ld.%1ld deg", label, sign,
             (long)(angle_x10 / 10L), (long)(angle_x10 % 10L));
+}
+
+static void ShowJY901SZYaw(void)
+{
+    char oled_str[24];
+    JY901S_Angle_t angle;
+    int32_t gz_turn_angle_x10;
+
+    JY901S_GetAngle(&angle);
+    gz_turn_angle_x10 = JY901S_GetGyroZTurnAngleX10();
+
+    OLED_ShowString(0, 0, (u8 *)"JY901S Z yaw    ", 16);
+
+    FormatAngleX10(oled_str, "ZA", angle.yaw_x10);
+    OLED_ShowString(0, 16, (u8 *)oled_str, 16);
+
+    FormatAngleX10(oled_str, "ZR", gz_turn_angle_x10);
+    OLED_ShowString(0, 32, (u8 *)oled_str, 16);
+
+    sprintf(oled_str, "F:%02X N%04lu A%04lu",
+            JY901S_GetLastFrameType(),
+            (unsigned long)(JY901S_GetGyroFrameCount() % 10000UL),
+            (unsigned long)(JY901S_GetAngleFrameCount() % 10000UL));
+    OLED_ShowString(0, 48, (u8 *)oled_str, 16);
+
+    OLED_Refresh();
 }
 
 int main(void)
@@ -113,9 +139,6 @@ int main(void)
 
             case 2:  // 模式2：循迹PID测试
             {
-                char oled_str[24];
-                JY901S_Angle_t angle;
-                int32_t gz_turn_angle_x10;
                 uint8_t i;
 
                 motor_set_direction(1, 0);
@@ -129,42 +152,19 @@ int main(void)
 
                 OLED_Clear();
                 for (i = 0; i < 10; i++) {
-                    JY901S_GetAngle(&angle);
-                    gz_turn_angle_x10 = JY901S_GetGyroZTurnAngleX10();
-
-                    OLED_ShowString(0, 0, (u8 *)"JY901S Z yaw    ", 16);
-
-                    FormatAngleX10(oled_str, "ZA", angle.yaw_x10);
-                    OLED_ShowString(0, 16, (u8 *)oled_str, 16);
-
-                    FormatAngleX10(oled_str, "ZR", gz_turn_angle_x10);
-                    OLED_ShowString(0, 32, (u8 *)oled_str, 16);
-
-                    sprintf(oled_str, "F:%02X N%04lu A%04lu",
-                            JY901S_GetLastFrameType(),
-                            (unsigned long)(JY901S_GetGyroFrameCount() % 10000UL),
-                            (unsigned long)(JY901S_GetAngleFrameCount() % 10000UL));
-                    OLED_ShowString(0, 48, (u8 *)oled_str, 16);
-
-                    OLED_Refresh();
+                    ShowJY901SZYaw();
                     delay_ms(50);
                 }
                 break;
             }
 
-            case 3:  // 模式3：直行 + 右转
-                // 直行
-                motor_set_direction(1, 1);
-                motor_set_direction(2, 1);
+            case 3:  // 模式3：原地左转60度测试
+                OLED_Clear();
+                ShowJY901SZYaw();
                 delay_ms(2000);
-                // 右转（右轮停，左轮前进）
-                motor_set_direction(1, 1);
-                motor_set_direction(2, 0);
-                delay_ms(1000);
-                // 停止
-                motor_set_direction(1, 0);
-                motor_set_direction(2, 0);
-                delay_ms(1000);
+                motor_turn_angle_with_update(90, ShowJY901SZYaw);
+                delay_ms(2000);
+                motor_turn_angle_with_update(-90, ShowJY901SZYaw);
                 break;
 
             case 4:  // 模式4：暂待使用，保持静止
