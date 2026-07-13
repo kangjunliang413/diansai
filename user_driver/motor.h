@@ -55,8 +55,6 @@ typedef struct {
 
 } Motor_PI_TypeDef;
 
-typedef void (*Motor_TurnUpdateCallback)(void);
-
 // ===================== 全局变量声明 =====================
 extern Motor_PI_TypeDef Motor_Left;   // 左轮PI控制器
 extern Motor_PI_TypeDef Motor_Right;  // 右轮PI控制器
@@ -106,16 +104,16 @@ int32_t motor_pi_control(Motor_PI_TypeDef *motor);
 void motor_pi_loop(uint8_t motor_id);
 
 /**
+ * @brief 按指定速度直线前进，满 1 秒后检测到黑线或到达指定时间后自动停车
+ * @param duration_ms 最大直行时间，单位：ms
+ * @param speed_mm_s 前进目标速度，单位：mm/s，必须大于 0
+ */
+void motor_drive_straight(uint16_t duration_ms, float speed_mm_s);
+
+/**
  * @brief 原地按角度转向
  * @param angle_deg 目标角度，正数=左转，负数=右转，单位：度
  */
 void motor_turn_angle(int16_t angle_deg);
-
-/**
- * @brief 原地按角度转向，并在转向过程中周期调用回调函数
- * @param angle_deg 目标角度，正数=左转，负数=右转，单位：度
- * @param update_callback 显示或调试刷新回调，可以传0
- */
-void motor_turn_angle_with_update(int16_t angle_deg, Motor_TurnUpdateCallback update_callback);
 
 #endif // MOTOR_H

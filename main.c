@@ -33,7 +33,6 @@
 #include "ti_msp_dl_config.h"
 #include "delay.h"
 #include "oled.h"
-#include <stdio.h>
 #include "uart.h"
 #include "key.h"
 #include "motor.h"
@@ -41,46 +40,7 @@
 #include "jy901s.h"
 
 int status = 0;
-volatile int run_mode = 2;  // 运行模式：0=停止, 1=直行, 2=JY901S测试, 3=原地转向测试, 4=保留
-
-static void FormatAngleX10(char *str, const char *label, int32_t angle_x10)
-{
-    char sign = ' ';
-
-    if (angle_x10 < 0) {
-        sign = '-';
-        angle_x10 = -angle_x10;
-    }
-
-    sprintf(str, "%s:%c%3ld.%1ld deg", label, sign,
-            (long)(angle_x10 / 10L), (long)(angle_x10 % 10L));
-}
-
-static void ShowJY901SZYaw(void)
-{
-    char oled_str[24];
-    JY901S_Angle_t angle;
-    int32_t gz_turn_angle_x10;
-
-    JY901S_GetAngle(&angle);
-    gz_turn_angle_x10 = JY901S_GetGyroZTurnAngleX10();
-
-    OLED_ShowString(0, 0, (u8 *)"JY901S Z yaw    ", 16);
-
-    FormatAngleX10(oled_str, "ZA", angle.yaw_x10);
-    OLED_ShowString(0, 16, (u8 *)oled_str, 16);
-
-    FormatAngleX10(oled_str, "ZR", gz_turn_angle_x10);
-    OLED_ShowString(0, 32, (u8 *)oled_str, 16);
-
-    sprintf(oled_str, "F:%02X N%04lu A%04lu",
-            JY901S_GetLastFrameType(),
-            (unsigned long)(JY901S_GetGyroFrameCount() % 10000UL),
-            (unsigned long)(JY901S_GetAngleFrameCount() % 10000UL));
-    OLED_ShowString(0, 48, (u8 *)oled_str, 16);
-
-    OLED_Refresh();
-}
+volatile int run_mode = 2;  // 运行模式：0=停止, 1=直行, 2=固定角度循迹测试, 3=直线+圆弧循迹测试, 4=保留
 
 int main(void)
 {
@@ -137,39 +97,54 @@ int main(void)
                 delay_ms(1000);
                 break;
 
-            case 2:  // 模式2：循迹PID测试
+            case 2:  // 模式2：以开机初始方向为基准的固定角度循迹测试
             {
-                uint8_t i;
+                delay_ms(1000);
+                motor_turn_angle(-37);                // 目标：相对初始方向 -40°
+                motor_drive_straight(7000U, 220.0f); // 第一段直线
+                Huidu_LineFollow(6000U);             // 第一段循迹
+                motor_turn_angle(215);              // 目标：相对初始方向 -140°
+                motor_drive_straight(7000U, 220.0f); // 第二段直线
+                Huidu_LineFollow(6000U);                // 最后一段循迹，线路结束时停车
 
-                motor_set_direction(1, 0);
-                motor_set_direction(2, 0);
-                __disable_irq();
-                Motor_Left.target_speed = 0.0f;
-                Motor_Right.target_speed = 0.0f;
-                Motor_Left.integral = 0.0f;
-                Motor_Right.integral = 0.0f;
-                __enable_irq();
+                motor_turn_angle(-32);                // 目标：相对初始方向 -40°
+                motor_drive_straight(7000U, 220.0f); // 第一段直线
+                Huidu_LineFollow(6000U);             // 第一段循迹
+                motor_turn_angle(215);              // 目标：相对初始
+                motor_drive_straight(7000U, 220.0f);
+                Huidu_LineFollow(6000U);
 
-                OLED_Clear();
-                for (i = 0; i < 10; i++) {
-                    ShowJY901SZYaw();
-                    delay_ms(50);
-                }
+                motor_turn_angle(-32);                // 目标：相对初始方向 -40°
+                motor_drive_straight(7000U, 220.0f); // 第一段直线
+                Huidu_LineFollow(6000U);             // 第一段循迹
+                motor_turn_angle(214.5);              // 目标：相对初始
+                motor_drive_straight(7000U, 220.0f);
+                Huidu_LineFollow(6000U);
+
+                motor_turn_angle(-32.5);                // 目标：相对初始方向 -40°
+                motor_drive_straight(7000U, 220.0f); // 第一段直线
+                Huidu_LineFollow(6000U);             // 第一段循迹
+                motor_turn_angle(214.5);              // 目标：相对初始
+                motor_drive_straight(7000U, 220.0f);
+                Huidu_LineFollow(0U);
+                run_mode = 0;                         // 测试完成后不重复执行
                 break;
             }
 
-            case 3:  // 模式3：原地左转60度测试
-                OLED_Clear();
-                ShowJY901SZYaw();
-                delay_ms(2000);
-                motor_turn_angle_with_update(90, ShowJY901SZYaw);
-                delay_ms(2000);
-                motor_turn_angle_with_update(-90, ShowJY901SZYaw);
-                                delay_ms(2000);
-                motor_turn_angle_with_update(60, ShowJY901SZYaw);
-                delay_ms(2000);
-                motor_turn_angle_with_update(-60, ShowJY901SZYaw);
+            case 3:  // 模式3：直线 + 两段圆弧循迹测试
+            
+                delay_ms(1000);
+                motor_drive_straight(7000U, 220.0f);  // 第一段直线：1.5 s，200 mm/s
+                Huidu_LineFollow(6000U);              // 第一段圆弧：最多循迹 6 s
+                Motor_Left.target_speed = 100.0f;
+                Motor_Right.target_speed = 100.0f;
+                delay_ms(200);
+                motor_turn_angle(-179);
+                motor_drive_straight(7000U, 220.0f);  // 第二段直线：4 s，200 mm/s
+                Huidu_LineFollow(0U);                 // 第二段圆弧：全白时视为线路结束并停车
+                run_mode = 0;                          // 测试完成后不重复执行
                 break;
+
 
             case 4:  // 模式4：暂待使用，保持静止
                 motor_set_direction(1, 0);

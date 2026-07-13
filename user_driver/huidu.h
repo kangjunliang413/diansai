@@ -78,11 +78,11 @@ float Huidu_Get_Position(void);
 float Huidu_Get_Control_Output(void);
 
 /**
- * @brief 判断是否完全丢线
+ * @brief 判断循迹线路是否结束
  *
- * @return uint8_t 1=丢线（所有传感器都是白色），0=在线上
+ * @return uint8_t 1=所有传感器均为白色，循迹结束；0=仍检测到黑线
  */
-uint8_t Huidu_Is_Lost(void);
+uint8_t Huidu_Is_LineEnd(void);
 
 /**
  * @brief 自动巡线控制任务（基于参考工程 place_PID_value 的位置式 PID）
@@ -100,6 +100,14 @@ uint8_t Huidu_Is_Lost(void);
  * - 调用前需确保左右轮电机已初始化
  */
 void Huidu_LineFollow_Task(void);
+
+/**
+ * @brief 连续执行循迹控制
+ * @param duration_ms 循迹最长时间，单位：ms；传入 0 时一直循迹到线路结束
+ *
+ * 无论是否到达最长时间，只要所有灰度传感器均为白色，就认为循迹线路结束并停车。
+ */
+void Huidu_LineFollow(uint16_t duration_ms);
 
 /**
  * @brief 停止巡线（停止电机）

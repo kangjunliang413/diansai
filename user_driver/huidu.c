@@ -1,5 +1,6 @@
 #include "huidu.h"
 #include "motor.h"  // 引入电机控制接口
+#include "delay.h"
 
 // ===================== 巡线控制参数 =====================
 
@@ -144,11 +145,11 @@ float Huidu_Get_Control_Output(void)
 }
 
 /**
- * @brief 判断是否完全丢线
+ * @brief 判断循迹线路是否结束
  *
- * @return uint8_t 1=丢线（所有传感器都是白色），0=在线上
+ * @return uint8_t 1=所有传感器均为白色，循迹结束；0=仍检测到黑线
  */
-uint8_t Huidu_Is_Lost(void)
+uint8_t Huidu_Is_LineEnd(void)
 {
     uint8_t sensor_data = Huidu_Read_Raw();
     return (sensor_data == 0x00) ? 1 : 0;
@@ -210,6 +211,24 @@ void Huidu_LineFollow_Task(void)
 
     Motor_Left.target_speed = left_speed;
     Motor_Right.target_speed = right_speed;
+}
+
+void Huidu_LineFollow(uint16_t duration_ms)
+{
+    uint16_t elapsed_ms = 0U;
+    const uint16_t control_period_ms = 20U;
+
+    while ((duration_ms == 0U) || (elapsed_ms < duration_ms)) {
+        if (Huidu_Is_LineEnd() != 0U) {
+            break;
+        }
+
+        Huidu_LineFollow_Task();
+        delay_ms(control_period_ms);
+        elapsed_ms += control_period_ms;
+    }
+
+    Huidu_LineFollow_Stop();
 }
 
 /**
