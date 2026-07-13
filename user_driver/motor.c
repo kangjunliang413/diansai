@@ -526,7 +526,7 @@ void GROUP1_IRQHandler(void)
         // 按键中断：循环切换运行模式
         {
             extern volatile int run_mode;
-            run_mode = 2;  // 循环切换 0~4 五种模式 (run_mode + 1) % 5
+            run_mode = 1;  // 循环切换 0~4 五种模式 (run_mode + 1) % 5
         }
         break;
 

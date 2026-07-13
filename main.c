@@ -40,7 +40,7 @@
 #include "jy901s.h"
 
 int status = 0;
-volatile int run_mode = 2;  // 运行模式：0=停止, 1=直行, 2=固定角度循迹测试, 3=直线+圆弧循迹测试, 4=保留
+volatile int run_mode = 1;  // 运行模式：0=停止, 1=直行, 2=固定角度循迹测试, 3=直线+圆弧循迹测试, 4=保留
 
 int main(void)
 {
@@ -88,14 +88,23 @@ int main(void)
         // ========== 主循环：根据模式执行不同的控制逻辑 ==========
         switch(run_mode) {
             case 1:  // 模式1：直行测试
-                motor_set_direction(1, 1);
-                motor_set_direction(2, 1);
-                delay_ms(3000);  // 直行 3 秒
-                // 停止
-                motor_set_direction(1, 0);
-                motor_set_direction(2, 0);
+            {
                 delay_ms(1000);
-                break;
+                Huidu_LineFollow(5000U);
+                motor_drive_straight(800U, 200.0f);
+                motor_turn_angle(+90);
+                Huidu_LineFollow(5000U);
+                motor_drive_straight(800U, 200.0f);
+                motor_turn_angle(+180);
+                Huidu_LineFollow(5000U);
+                motor_drive_straight(800U, 200.0f);
+                motor_turn_angle(+270);
+                Huidu_LineFollow(5000U);
+                motor_drive_straight(800U, 200.0f);
+                motor_turn_angle(+360);
+                
+
+            }
 
             case 2:  // 模式2：以开机初始方向为基准的固定角度循迹测试
             {
@@ -129,9 +138,9 @@ int main(void)
                 Huidu_LineFollow(0U);
                 run_mode = 0;                         // 测试完成后不重复执行
                 break;
-            }
+            } 
 
-            case 3:  // 模式3：直线 + 两段圆弧循迹测试
+            case 3:  // 模式3：直线 + 两段圆弧循迹测试 
             
                 delay_ms(1000);
                 motor_drive_straight(7000U, 220.0f);  // 第一段直线：1.5 s，200 mm/s
