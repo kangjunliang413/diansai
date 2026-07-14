@@ -163,6 +163,7 @@ PWM2.ccIndex                            = [0];
 PWM2.timerStartTimer                    = true;
 PWM2.timerCount                         = 4000;
 PWM2.pwmMode                            = "EDGE_ALIGN_UP";
+PWM2.clockDivider                       = 2;
 PWM2.PWM_CHANNEL_0.$name                = "ti_driverlib_pwm_PWMTimerCC1";
 PWM2.ccp0PinConfig.direction            = scripting.forceWrite("OUTPUT");
 PWM2.ccp0PinConfig.hideOutputInversion  = scripting.forceWrite(false);

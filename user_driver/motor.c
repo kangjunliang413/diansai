@@ -12,6 +12,8 @@
 #define MOTOR_TURN_LOOP_MS           10U
 #define MOTOR_STRAIGHT_CHECK_MS       10U
 #define MOTOR_STRAIGHT_LINE_ARM_MS  1000U
+#define MOTOR_RAMP_STEP_MS             50U
+#define MOTOR_RAMP_START_SPEED_MM_S    30.0f
 
 // ===================== 全局变量定义 =====================
 
@@ -310,6 +312,80 @@ void motor_pi_loop(uint8_t motor_id)
         motor_set_direction(2, direction);
         motor_set_duty(2, duty);
     }
+}
+
+void motor_accelerate_straight(float target_speed_mm_s, uint16_t ramp_time_ms)
+{
+    float start_speed_mm_s;
+    float speed_step_mm_s;
+    uint16_t step_count;
+    uint16_t step_index;
+
+    /* 目标为零时直接停车，避免带着上次的积分状态重新起步。 */
+    if (target_speed_mm_s == 0.0f) {
+        motor_stop_all();
+        return;
+    }
+
+    /*
+     * 斜坡按 50 ms（与 PID 采样周期一致）更新。
+     * 500 ms 对应 10 级，300 mm/s 时从 30 mm/s 起步、每级约增加 27 mm/s。
+     */
+    step_count = ramp_time_ms / MOTOR_RAMP_STEP_MS;
+    if (step_count == 0U) {
+        step_count = 1U;
+    }
+
+    start_speed_mm_s = (target_speed_mm_s > 0.0f) ?
+                           MOTOR_RAMP_START_SPEED_MM_S :
+                           -MOTOR_RAMP_START_SPEED_MM_S;
+
+    /* 低于起步速度时无需做反向斜坡，直接给目标速度即可。 */
+    if (((target_speed_mm_s > 0.0f) &&
+         (target_speed_mm_s <= start_speed_mm_s)) ||
+        ((target_speed_mm_s < 0.0f) &&
+         (target_speed_mm_s >= start_speed_mm_s))) {
+        __disable_irq();
+        Motor_Left.error = 0.0f;
+        Motor_Right.error = 0.0f;
+        Motor_Left.integral = 0.0f;
+        Motor_Right.integral = 0.0f;
+        Motor_Left.pwm_output = 0;
+        Motor_Right.pwm_output = 0;
+        Motor_Left.target_speed = target_speed_mm_s;
+        Motor_Right.target_speed = target_speed_mm_s;
+        __enable_irq();
+        return;
+    }
+
+    speed_step_mm_s = (target_speed_mm_s - start_speed_mm_s) / (float)step_count;
+
+    /* 从静止起步时清除积分，防止上一次运行的积分项造成 PWM 突跳。 */
+    __disable_irq();
+    Motor_Left.error = 0.0f;
+    Motor_Right.error = 0.0f;
+    Motor_Left.integral = 0.0f;
+    Motor_Right.integral = 0.0f;
+    Motor_Left.pwm_output = 0;
+    Motor_Right.pwm_output = 0;
+    Motor_Left.target_speed = start_speed_mm_s;
+    Motor_Right.target_speed = start_speed_mm_s;
+    __enable_irq();
+
+    for (step_index = 1U; step_index <= step_count; step_index++) {
+        delay_ms(MOTOR_RAMP_STEP_MS);
+
+        __disable_irq();
+        Motor_Left.target_speed = start_speed_mm_s + speed_step_mm_s * (float)step_index;
+        Motor_Right.target_speed = start_speed_mm_s + speed_step_mm_s * (float)step_index;
+        __enable_irq();
+    }
+
+    /* 避免浮点计算误差，最终目标值精确落在调用方指定的速度。 */
+    __disable_irq();
+    Motor_Left.target_speed = target_speed_mm_s;
+    Motor_Right.target_speed = target_speed_mm_s;
+    __enable_irq();
 }
 
 void motor_drive_straight(uint16_t duration_ms, float speed_mm_s)

@@ -104,6 +104,18 @@ int32_t motor_pi_control(Motor_PI_TypeDef *motor);
 void motor_pi_loop(uint8_t motor_id);
 
 /**
+ * @brief 直线起步斜坡加速
+ *
+ * 左右轮从低速同步提升至指定速度。斜坡更新周期与 PID 周期一致，
+ * 函数返回后保持在 target_speed，需由调用方在合适时机将目标速度设为 0。
+ * 本函数只能在主循环等非中断上下文调用。
+ *
+ * @param target_speed_mm_s 最终直线目标速度，单位：mm/s，正数前进、负数后退
+ * @param ramp_time_ms 加速时间，单位：ms；建议使用 500 ms
+ */
+void motor_accelerate_straight(float target_speed_mm_s, uint16_t ramp_time_ms);
+
+/**
  * @brief 按指定速度直线前进，满 1 秒后检测到黑线或到达指定时间后自动停车
  * @param duration_ms 最大直行时间，单位：ms
  * @param speed_mm_s 前进目标速度，单位：mm/s，必须大于 0

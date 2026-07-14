@@ -102,8 +102,8 @@ int main(void)
                 Huidu_LineFollow(5000U);
                 motor_drive_straight(800U, 200.0f);
                 motor_turn_angle(+360);
-                
-
+                break;
+            
             }
 
             case 2:  // 模式2：以开机初始方向为基准的固定角度循迹测试
@@ -155,11 +155,19 @@ int main(void)
                 break;
 
 
-            case 4:  // 模式4：暂待使用，保持静止
-                motor_set_direction(1, 0);
-                motor_set_direction(2, 0);
+            case 4:  // 模式4：0.5 s 斜坡加速直线测试
+            {
+            
                 delay_ms(1000);
+                motor_accelerate_straight(350.0f, 500U);
+                delay_ms(3000);
+
+                Motor_Left.target_speed = 0.0f;
+                Motor_Right.target_speed = 0.0f;
+                run_mode = 0;  // 单次测试完成后保持停车，避免重复高速起步
                 break;
+            }
+                
 
             default:
                 // 异常情况，停止
