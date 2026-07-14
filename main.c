@@ -90,17 +90,17 @@ int main(void)
             case 1:  // 模式1：直行测试
             {
                 delay_ms(1000);
-                Huidu_LineFollow(5000U);
-                motor_drive_straight(800U, 200.0f);
+                Huidu_LineFollow(10000U, 100.0f);
+                motor_drive_straight_continue(1800U, 100.0f);
                 motor_turn_angle(+90);
-                Huidu_LineFollow(5000U);
-                motor_drive_straight(800U, 200.0f);
+                Huidu_LineFollow(10000U, 100.0f);
+                motor_drive_straight_continue(1800U, 100.0f);
                 motor_turn_angle(+180);
-                Huidu_LineFollow(5000U);
-                motor_drive_straight(800U, 200.0f);
+                Huidu_LineFollow(10000U, 100.0f);
+                motor_drive_straight_continue(1800U, 100.0f);
                 motor_turn_angle(+270);
-                Huidu_LineFollow(5000U);
-                motor_drive_straight(800U, 200.0f);
+                Huidu_LineFollow(10000U, 100.0f);
+                motor_drive_straight_continue(1800U, 100.0f);
                 motor_turn_angle(+360);
                 break;
             
@@ -111,31 +111,31 @@ int main(void)
                 delay_ms(1000);
                 motor_turn_angle(-37);                // 目标：相对初始方向 -40°
                 motor_drive_straight(7000U, 220.0f); // 第一段直线
-                Huidu_LineFollow(6000U);             // 第一段循迹
+                Huidu_LineFollow(6000U, 200.0f);     // 第一段循迹
                 motor_turn_angle(215);              // 目标：相对初始方向 -140°
                 motor_drive_straight(7000U, 220.0f); // 第二段直线
-                Huidu_LineFollow(6000U);                // 最后一段循迹，线路结束时停车
+                Huidu_LineFollow(6000U, 200.0f);     // 最后一段循迹，线路结束时停车
 
                 motor_turn_angle(-32);                // 目标：相对初始方向 -40°
                 motor_drive_straight(7000U, 220.0f); // 第一段直线
-                Huidu_LineFollow(6000U);             // 第一段循迹
+                Huidu_LineFollow(6000U, 200.0f);     // 第一段循迹
                 motor_turn_angle(215);              // 目标：相对初始
                 motor_drive_straight(7000U, 220.0f);
-                Huidu_LineFollow(6000U);
+                Huidu_LineFollow(6000U, 200.0f);
 
                 motor_turn_angle(-32);                // 目标：相对初始方向 -40°
                 motor_drive_straight(7000U, 220.0f); // 第一段直线
-                Huidu_LineFollow(6000U);             // 第一段循迹
+                Huidu_LineFollow(6000U, 200.0f);     // 第一段循迹
                 motor_turn_angle(214.5);              // 目标：相对初始
                 motor_drive_straight(7000U, 220.0f);
-                Huidu_LineFollow(6000U);
+                Huidu_LineFollow(6000U, 200.0f);
 
                 motor_turn_angle(-32.5);                // 目标：相对初始方向 -40°
                 motor_drive_straight(7000U, 220.0f); // 第一段直线
-                Huidu_LineFollow(6000U);             // 第一段循迹
+                Huidu_LineFollow(6000U, 200.0f);     // 第一段循迹
                 motor_turn_angle(214.5);              // 目标：相对初始
                 motor_drive_straight(7000U, 220.0f);
-                Huidu_LineFollow(0U);
+                Huidu_LineFollow(0U, 200.0f);
                 run_mode = 0;                         // 测试完成后不重复执行
                 break;
             } 
@@ -144,13 +144,13 @@ int main(void)
             
                 delay_ms(1000);
                 motor_drive_straight(7000U, 220.0f);  // 第一段直线：1.5 s，200 mm/s
-                Huidu_LineFollow(6000U);              // 第一段圆弧：最多循迹 6 s
+                Huidu_LineFollow(6000U, 200.0f);      // 第一段圆弧：最多循迹 6 s
                 Motor_Left.target_speed = 100.0f;
                 Motor_Right.target_speed = 100.0f;
                 delay_ms(200);
                 motor_turn_angle(-179);
                 motor_drive_straight(7000U, 220.0f);  // 第二段直线：4 s，200 mm/s
-                Huidu_LineFollow(0U);                 // 第二段圆弧：全白时视为线路结束并停车
+                Huidu_LineFollow(0U, 200.0f);         // 第二段圆弧：全白时视为线路结束并停车
                 run_mode = 0;                          // 测试完成后不重复执行
                 break;
 

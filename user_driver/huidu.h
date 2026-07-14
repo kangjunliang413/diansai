@@ -104,10 +104,13 @@ void Huidu_LineFollow_Task(void);
 /**
  * @brief 连续执行循迹控制
  * @param duration_ms 循迹最长时间，单位：ms；传入 0 时一直循迹到线路结束
+ * @param speed_mm_s 循迹基础速度，单位：mm/s；必须大于 0，最大为 500 mm/s
  *
- * 无论是否到达最长时间，只要所有灰度传感器均为白色，就认为循迹线路结束并停车。
+ * 所有灰度传感器均为白色或到达最长时间时，循迹结束并停车。L4+L3、L3+L2
+ * 同时检测到黑线时，函数立即返回但保留当前电机速度，由调用方接管后续动作。
+ * 左右轮速度会在基础速度上叠加 PID 修正量，并限幅至 0~500 mm/s。
  */
-void Huidu_LineFollow(uint16_t duration_ms);
+void Huidu_LineFollow(uint16_t duration_ms, float speed_mm_s);
 
 /**
  * @brief 停止巡线（停止电机）

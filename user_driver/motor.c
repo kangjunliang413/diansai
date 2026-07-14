@@ -388,6 +388,44 @@ void motor_accelerate_straight(float target_speed_mm_s, uint16_t ramp_time_ms)
     __enable_irq();
 }
 
+void motor_drive_straight_continue(uint16_t duration_ms, float speed_mm_s)
+{
+    uint16_t elapsed_ms = 0U;
+
+    if ((duration_ms == 0U) || (speed_mm_s <= 0.0f)) {
+        motor_stop_all();
+        return;
+    }
+
+    /*
+     * 连续动作交接：只切换目标速度，保留 PI 积分和现有 PWM 输出，
+     * 避免控制器状态清零导致下一次 PI 更新出现驱动力突降。
+     */
+    __disable_irq();
+    Motor_Left.target_speed = speed_mm_s;
+    Motor_Right.target_speed = speed_mm_s;
+    __enable_irq();
+
+    while (elapsed_ms < duration_ms) {
+        uint16_t wait_ms = MOTOR_STRAIGHT_CHECK_MS;
+
+        /* 起步满 1 秒后，任一灰度通道检测到黑线即结束直线段。 */
+        if ((elapsed_ms >= MOTOR_STRAIGHT_LINE_ARM_MS) &&
+            (Huidu_Read_Raw() != 0x00U)) {
+            break;
+        }
+
+        if ((duration_ms - elapsed_ms) < wait_ms) {
+            wait_ms = duration_ms - elapsed_ms;
+        }
+
+        delay_ms(wait_ms);
+        elapsed_ms += wait_ms;
+    }
+
+    motor_stop_all();
+}
+
 void motor_drive_straight(uint16_t duration_ms, float speed_mm_s)
 {
     uint16_t elapsed_ms = 0U;

@@ -123,6 +123,18 @@ void motor_accelerate_straight(float target_speed_mm_s, uint16_t ramp_time_ms);
 void motor_drive_straight(uint16_t duration_ms, float speed_mm_s);
 
 /**
+ * @brief 连续动作中接管为直线行驶，不重置电机 PI 状态
+ *
+ * 适用于循迹、转弯等动作完成后需无缝进入直行的场景。函数仅将左右轮
+ * 目标速度切换为 speed_mm_s，保留当前误差、积分项和 PWM 输出，避免
+ * 因控制器状态清零导致短暂失去驱动力。
+ *
+ * @param duration_ms 最大直行时间，单位：ms
+ * @param speed_mm_s 前进目标速度，单位：mm/s，必须大于 0
+ */
+void motor_drive_straight_continue(uint16_t duration_ms, float speed_mm_s);
+
+/**
  * @brief 原地按角度转向
  * @param angle_deg 目标角度，正数=左转，负数=右转，单位：度
  */

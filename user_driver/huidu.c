@@ -13,8 +13,8 @@
 // 8 路传感器位置编号为 1~8，中心点为 4.5；参考工程 12 路时中心点为 6.5
 #define LINE_POSITION_CENTER    4.5f
 
-// 基础速度和目标速度限幅，单位 mm/s
-#define LINE_FOLLOW_BASE_SPEED  200.0f
+// 默认基础速度和目标速度限幅，单位 mm/s
+#define LINE_FOLLOW_DEFAULT_BASE_SPEED  200.0f
 #define SPEED_MAX               500.0f
 #define SPEED_MIN               0.0f
 
@@ -155,6 +155,21 @@ uint8_t Huidu_Is_LineEnd(void)
     return (sensor_data == 0x00) ? 1 : 0;
 }
 
+/**
+ * @brief 判断左侧终止标记
+ *
+ * L4 + L3（Bit 0、1）或 L3 + L2（Bit 1、2）同时检测到黑线时，
+ * 认为已经到达循迹终点。
+ */
+static uint8_t Huidu_Is_LeftEndMarker(uint8_t sensor_data)
+{
+    const uint8_t left_outer_pair_mask = 0x03U;  // L4 + L3
+    const uint8_t left_inner_pair_mask = 0x06U;  // L3 + L2
+
+    return (((sensor_data & left_outer_pair_mask) == left_outer_pair_mask) ||
+            ((sensor_data & left_inner_pair_mask) == left_inner_pair_mask)) ? 1U : 0U;
+}
+
 // ===================== 自动巡线控制函数 =====================
 
 /**
@@ -178,7 +193,7 @@ uint8_t Huidu_Is_LineEnd(void)
  * 使用方法：
  * 在主循环中以一定周期（如50ms）调用此函数
  */
-void Huidu_LineFollow_Task(void)
+static void Huidu_LineFollow_Task_WithSpeed(float base_speed)
 {
     uint8_t sensor_data = Huidu_Read_Raw();
     float error;
@@ -203,8 +218,8 @@ void Huidu_LineFollow_Task(void)
     last_control_output = control_output;
 
     // 参考工程：左轮=基础-修正，右轮=基础+修正
-    left_speed  = LINE_FOLLOW_BASE_SPEED - control_output;
-    right_speed = LINE_FOLLOW_BASE_SPEED + control_output;
+    left_speed  = base_speed - control_output;
+    right_speed = base_speed + control_output;
 
     left_speed = Huidu_Limit_Float(left_speed, SPEED_MIN, SPEED_MAX);
     right_speed = Huidu_Limit_Float(right_speed, SPEED_MIN, SPEED_MAX);
@@ -213,17 +228,40 @@ void Huidu_LineFollow_Task(void)
     Motor_Right.target_speed = right_speed;
 }
 
-void Huidu_LineFollow(uint16_t duration_ms)
+void Huidu_LineFollow_Task(void)
+{
+    Huidu_LineFollow_Task_WithSpeed(LINE_FOLLOW_DEFAULT_BASE_SPEED);
+}
+
+void Huidu_LineFollow(uint16_t duration_ms, float speed_mm_s)
 {
     uint16_t elapsed_ms = 0U;
     const uint16_t control_period_ms = 20U;
+    float base_speed;
+
+    if (speed_mm_s <= 0.0f) {
+        Huidu_LineFollow_Stop();
+        return;
+    }
+
+    base_speed = Huidu_Limit_Float(speed_mm_s, SPEED_MIN, SPEED_MAX);
 
     while ((duration_ms == 0U) || (elapsed_ms < duration_ms)) {
-        if (Huidu_Is_LineEnd() != 0U) {
+        uint8_t sensor_data = Huidu_Read_Raw();
+
+        /*
+         * 左侧终止标记优先于普通丢线判断，且不会进入本周期的循迹控制。
+         * 这是连续动作的交接点：保留当前速度并直接返回，由调用方接管。
+         */
+        if (Huidu_Is_LeftEndMarker(sensor_data) != 0U) {
+            return;
+        }
+
+        if (sensor_data == 0x00U) {
             break;
         }
 
-        Huidu_LineFollow_Task();
+        Huidu_LineFollow_Task_WithSpeed(base_speed);
         delay_ms(control_period_ms);
         elapsed_ms += control_period_ms;
     }
