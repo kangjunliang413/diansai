@@ -67,8 +67,6 @@ int main(void)
     // 使能GPIOA中断（按键KEY1和左电机编码器AA共享此中断）
     NVIC_EnableIRQ(DC_MOTOR_INT_IRQN);  // 等价于 GPIOA_INT_IRQn
     NVIC_EnableIRQ(KEY_INT_IRQN);
-    DL_Timer_setCaptureCompareValue(SERVO_INST, 50, GPIO_SERVO_C1_IDX);
-    DL_Timer_startCounter(SERVO_INST);
 
     // ===== 双轮电机初始化 =====
     motor_init(1);  // 初始化左轮
